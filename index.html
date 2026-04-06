@@ -1,0 +1,1363 @@
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SFT-5 – Level Crossing Safety Inspection</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --blue-dark:  #1565c0;
+    --blue-mid:   #1e88e5;
+    --blue-light: #bbdefb;
+    --blue-pale:  #e3f2fd;
+    --blue-bg:    #f0f8ff;
+    --white:      #ffffff;
+    --border:     #90caf9;
+    --text:       #0d2a4e;
+    --accent:     #0277bd;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: var(--blue-bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .progress-bar {
+    background: var(--blue-mid);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 6px rgba(0,0,0,.2);
+  }
+  .step {
+    display: flex; align-items: center; gap: 8px;
+    font-size: .85rem; font-weight: 600; color: rgba(255,255,255,.6);
+  }
+  .step.active { color: #fff; }
+  .step-circle {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(255,255,255,.25);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: .8rem; color: #fff;
+  }
+  .step.active .step-circle { background: var(--white); color: var(--blue-dark); }
+  .step-divider { flex: 1; height: 2px; background: rgba(255,255,255,.3); }
+
+  .container {
+    max-width: 900px;
+    margin: 28px auto 40px;
+    padding: 0 16px;
+  }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(21,101,192,.12);
+    margin-bottom: 24px;
+  }
+
+  .card-header {
+    background: linear-gradient(135deg, var(--blue-dark), var(--blue-mid));
+    color: #fff;
+    padding: 18px 24px;
+  }
+  .card-header h1 { font-size: 1.15rem; letter-spacing: .5px; }
+  .card-header p  { font-size: .8rem; opacity: .85; margin-top: 4px; }
+
+  .card-body { padding: 22px 24px; }
+
+  .section-title {
+    background: var(--blue-light);
+    color: var(--blue-dark);
+    font-weight: 700;
+    font-size: .95rem;
+    padding: 9px 16px;
+    border-left: 4px solid var(--blue-mid);
+    border-radius: 6px;
+    margin: 18px 0 14px;
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .col-span-2 { grid-column: span 2; }
+
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+
+  label {
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: .4px;
+  }
+
+  input[type="text"],
+  input[type="date"],
+  input[type="number"],
+  select,
+  textarea {
+    border: 1.5px solid var(--border);
+    border-radius: 7px;
+    padding: 8px 11px;
+    font-size: .92rem;
+    background: var(--blue-pale);
+    color: var(--text);
+    transition: border-color .2s, box-shadow .2s;
+    width: 100%;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--blue-mid);
+    box-shadow: 0 0 0 3px rgba(30,136,229,.15);
+    background: #fff;
+  }
+  textarea { resize: none; min-height: 70px; overflow: hidden; }
+
+  /* Bold + highlighted auto-resize textareas for Remarks & Other Items */
+  #generalRemarks,
+  #otherItems {
+    font-weight: 700;
+    font-size: .97rem;
+    color: #0d2a4e;
+    line-height: 1.65;
+    background: #ddeeff;
+    border: 2px solid #1565c0;
+    min-height: 90px;
+    transition: background .2s, border-color .2s, box-shadow .2s;
+  }
+  #generalRemarks:focus,
+  #otherItems:focus {
+    background: #ffffff;
+    border-color: #1e88e5;
+    box-shadow: 0 0 0 3px rgba(30,136,229,.22);
+  }
+
+  .checklist { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .checklist thead th {
+    background: var(--blue-light);
+    color: var(--blue-dark);
+    font-size: .78rem;
+    font-weight: 700;
+    padding: 8px 10px;
+    text-align: left;
+    border: 1px solid var(--border);
+  }
+  .checklist tbody tr:nth-child(even) { background: var(--blue-pale); }
+  .checklist tbody tr:hover { background: #dceefb; }
+  .checklist td {
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    font-size: .88rem;
+    vertical-align: middle;
+  }
+  .checklist td select {
+    padding: 5px 8px;
+    font-size: .86rem;
+    min-width: 80px;
+  }
+  .checklist td input[type="text"] {
+    padding: 5px 8px;
+    font-size: .86rem;
+  }
+
+  /* ── Buttons ── */
+  .btn-row {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    justify-content: flex-end;
+    align-items: flex-end;
+    margin-top: 28px;
+    padding: 18px 24px;
+    background: var(--blue-pale);
+    border-top: 1px solid var(--border);
+    border-radius: 0 0 12px 12px;
+  }
+
+  /* CLI block at bottom left */
+  .cli-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-right: auto;
+    min-width: 260px;
+    max-width: 340px;
+  }
+  .cli-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .cli-block label {
+    font-size: .78rem;
+    font-weight: 700;
+    color: var(--blue-dark);
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .cli-block select {
+    flex: 1;
+    padding: 7px 10px;
+    font-size: .85rem;
+    border-radius: 7px;
+    border: 1.5px solid var(--blue-dark);
+    background: #fff;
+    color: var(--text);
+  }
+
+  /* CLI Signature upload */
+  #cliSigUploadBtn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 13px;
+    background: var(--blue-dark);
+    color: #fff;
+    border: none; border-radius: 7px;
+    font-size: .82rem; font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .2s;
+  }
+  #cliSigUploadBtn:hover { background: var(--blue-mid); }
+  #cliSigUploadBtn svg { width: 15px; height: 15px; fill: #fff; flex-shrink: 0; }
+
+  #cliSigPreview {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  #cliSigPreview img {
+    height: 36px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: #fff;
+  }
+  #cliSigClear {
+    font-size: .75rem;
+    color: #b71c1c;
+    cursor: pointer;
+    text-decoration: underline;
+    background: none; border: none;
+  }
+
+  .btn {
+    display: flex; align-items: center; gap: 7px;
+    padding: 10px 20px;
+    border: none; border-radius: 8px;
+    font-size: .88rem; font-weight: 600;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.18); }
+  .btn:active { transform: translateY(0); }
+
+  .btn-primary   { background: var(--blue-dark);  color: #fff; }
+  .btn-secondary { background: var(--blue-mid);   color: #fff; }
+  .btn-success   { background: #2e7d32;            color: #fff; }
+  .btn-warning   { background: #e65100;            color: #fff; }
+  .btn-outline   { background: #fff; color: var(--blue-dark); border: 2px solid var(--blue-dark); }
+  .btn-pdf       { background: #b71c1c;            color: #fff; }
+
+  .btn svg { width: 17px; height: 17px; fill: currentColor; flex-shrink: 0; }
+
+  .sig-block {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 24px; margin-top: 10px;
+  }
+  .sig-line {
+    border-top: 2px solid var(--border);
+    padding-top: 6px;
+    font-size: .78rem;
+    color: var(--accent);
+    text-align: center;
+  }
+
+  @media(max-width: 640px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .col-span-2 { grid-column: span 1; }
+    .sig-block   { grid-template-columns: 1fr; }
+    .cli-block   { max-width: 100%; min-width: unset; }
+    .btn-row     { flex-direction: column; align-items: stretch; }
+  }
+
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #1b5e20; color: #fff; padding: 12px 24px; border-radius: 8px;
+    font-size: .9rem; font-weight: 600; display: none; z-index: 999;
+    box-shadow: 0 4px 16px rgba(0,0,0,.25);
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-bar">
+  <div class="step active" id="step1">
+    <div class="step-circle">1</div>
+    <span>Gate &amp; Personnel Details</span>
+  </div>
+  <div class="step-divider"></div>
+  <div class="step" id="step2">
+    <div class="step-circle">2</div>
+    <span>Engineering, S&amp;T &amp; General Items</span>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- Hidden file input for CLI signature -->
+<input type="file" id="cliSigInput" accept="image/*" style="display:none" onchange="handleCliSig(this)" />
+<input type="hidden" id="cliNameHQ" />
+
+<div class="container">
+
+<!-- ═══════════════════════════ PAGE 1 ═══════════════════════════ -->
+<div class="page active" id="page1">
+  <div class="card">
+    <div class="card-header">
+      <h3>SFT-5</h3>
+      <h1>Check List for Safety Inspection of Manned Level Crossing Gate</h1>
+      <p>Detailed departmental inspection to be carried out as per checklist of respective department</p>
+    </div>
+    <div class="card-body">
+
+      <!-- Inspecting Official Details -->
+      <div class="grid-3" style="margin-bottom:18px; padding:14px 16px; background:var(--blue-pale); border:1.5px solid var(--border); border-radius:9px;">
+        <div class="form-group">
+          <label>Name of Inspecting Official</label>
+          <input type="text" id="inspOfficialName" placeholder="Enter name…" />
+        </div>
+        <div class="form-group">
+          <label>Date of Inspection</label>
+          <input type="date" id="inspDateTop" />
+        </div>
+        <div class="form-group">
+          <label>Designation</label>
+          <input type="text" id="inspDesignationTop" placeholder="Enter designation…" />
+        </div>
+      </div>
+
+      <div class="section-title">1. Level Crossing Gate Details</div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>LC Gate No.</label>
+          <input type="text" id="gateNo" value="" />
+        </div>
+        <div class="form-group">
+          <label>TVU</label>
+          <input type="text" id="tvu" value="" />
+        </div>
+        <div class="form-group">
+          <label>Location</label>
+          <input type="text" id="location" value=""/>
+        </div>
+        <div class="form-group">
+          <label>Last Date of Census</label>
+          <input type="date" id="censusDt" value="" />
+        </div>
+        <div class="form-group">
+          <label>Interlocked / Non-Interlocked</label>
+          <select id="interlocked">
+            <option value="Interlocked" selected>Interlocked</option>
+            <option value="Non-Interlocked">Non-Interlocked</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Engg. / Optg.</label>
+          <select id="enggOptg">
+            <option value="Optg." selected>Optg.</option>
+            <option value="Engg.">Engg.</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Optg. Category</label>
+          <input type="text" id="optgCat" value="" />
+        </div>
+        <div class="form-group">
+          <label>Gate Protection Diagram Painted in Gate Lodge</label>
+          <select id="gateProt">
+            <option value="Yes" selected>Yes</option>
+            <option value="No">No</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-title">2. Details of Gateman</div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" id="gatemanName" value="" />
+        </div>
+        <div class="form-group">
+          <label>Date of Birth</label>
+          <input type="date" id="dob" value="" />
+        </div>
+        <div class="form-group">
+          <label>Last PME Date</label>
+          <input type="date" id="pmeLast" value="" />
+        </div>
+        <div class="form-group">
+          <label>Next PME Due</label>
+          <input type="date" id="pmeNext" value="" />
+        </div>
+        <div class="form-group">
+          <label>Refresher Course Attended On</label>
+          <input type="date" id="refresherDone" value="" />
+        </div>
+        <div class="form-group">
+          <label>Refresher Course Due On</label>
+          <input type="date" id="refresherDue" value="" />
+        </div>
+      </div>
+
+      <div class="section-title">3. Knowledge of Gateman</div>
+      <table class="checklist">
+        <thead>
+          <tr>
+            <th width="5%">No.</th>
+            <th>Item</th>
+            <th width="18%">Yes / No</th>
+            <th width="25%">Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>i</td>
+            <td>Alertness</td>
+            <td><select name="k1"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td>
+            <td><input type="text" name="kr1" /></td>
+          </tr>
+          <tr>
+            <td>ii</td>
+            <td>Conversant with safety rules</td>
+            <td><select name="k2"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td>
+            <td><input type="text" name="kr2" /></td>
+          </tr>
+          <tr>
+            <td>iii</td>
+            <td>Knowledge of gate working rules</td>
+            <td><select name="k3"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td>
+            <td><input type="text" name="kr3" /></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="section-title">4. Availability of Safety Equipments</div>
+      <table class="checklist">
+        <thead>
+          <tr>
+            <th width="5%">No.</th>
+            <th>Item</th>
+            <th width="18%">Yes / No</th>
+            <th width="25%">Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>i</td>
+            <td>H.S. Lamp Cum Tri-Colour Torch</td>
+            <td><select name="s1"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td>
+            <td><input type="text" name="sr1" value="05 (wkg.)" /></td>
+          </tr>
+          <tr>
+            <td>ii</td>
+            <td>Hand Signal Flag Green (mounted on sticks)</td>
+            <td><select name="s2"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td>
+            <td><input type="text" name="sr2" value="05" /></td>
+          </tr>
+          <tr>
+            <td>iii</td>
+            <td>Hand Signal Flag Red (mounted on sticks)</td>
+            <td><select name="s3"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td>
+            <td><input type="text" name="sr3" value="05" /></td>
+          </tr>
+          <tr>
+            <td>iv</td>
+            <td>Banner Flag Red</td>
+            <td><select name="s4"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td>
+            <td><input type="text" name="sr4" value="06" /></td>
+          </tr>
+          <tr>
+            <td>v</td>
+            <td>Detonators (Mfg Dt.-04/23 BOTH)</td>
+            <td><select name="s5"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td>
+            <td><input type="text" name="sr5" value="20" /></td>
+          </tr>
+          <tr>
+            <td>vi</td>
+            <td>Posts for exhibiting Red Banner Flag / H.S. Lamps</td>
+            <td><select name="s6"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td>
+            <td><input type="text" name="sr6" value="02" /></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="section-title">5. Availability of Registers</div>
+      <table class="checklist">
+        <thead>
+          <tr>
+            <th width="5%">No.</th>
+            <th>Item</th>
+            <th width="18%">Yes / No</th>
+            <th width="25%">Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>i</td>
+            <td>Gate Working Rules (GWR)</td>
+            <td><select name="r1"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td>
+            <td><input type="text" name="rr1" /></td>
+          </tr>
+          <tr>
+            <td>ii</td>
+            <td>Gate Inspection Book</td>
+            <td><select name="r2"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td>
+            <td><input type="text" name="rr2" /></td>
+          </tr>
+          <tr>
+            <td>iii</td>
+            <td>Duty Roster</td>
+            <td><select name="r3"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td>
+            <td><input type="text" name="rr3" /></td>
+          </tr>
+          <tr>
+            <td>iv</td>
+            <td>Gatemen Catechism Register</td>
+            <td><select name="r4"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td>
+            <td><input type="text" name="rr4" /></td>
+          </tr>
+          <tr>
+            <td>v</td>
+            <td>Public Complaint</td>
+            <td><select name="r5"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td>
+            <td><input type="text" name="rr5" /></td>
+          </tr>
+          <tr>
+            <td>vi</td>
+            <td>S &amp; T Maintenance Register</td>
+            <td><select name="r6"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td>
+            <td><input type="text" name="rr6" /></td>
+          </tr>
+          <tr>
+            <td>vii</td>
+            <td>Surprise Night LC Inspection Register</td>
+            <td><select name="r7"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td>
+            <td><input type="text" name="rr7" /></td>
+          </tr>
+        </tbody>
+      </table>
+
+    </div><!-- /card-body -->
+
+    <div class="btn-row">
+      <!-- Page 1: CLI block removed — see Page 2 -->
+      <button class="btn btn-outline" onclick="saveDraft()">
+        <svg viewBox="0 0 24 24"><path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+        Save Draft
+      </button>
+      <button class="btn btn-warning" onclick="uploadDraft()">
+        <svg viewBox="0 0 24 24"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+        Upload Draft
+      </button>
+      <button class="btn btn-primary" onclick="nextPage()">
+        Next Page →
+      </button>
+    </div>
+  </div>
+</div><!-- /page1 -->
+
+
+<!-- ═══════════════════════════ PAGE 2 ═══════════════════════════ -->
+<div class="page" id="page2">
+  <div class="card">
+    <div class="card-header">
+      <h1>SFT-5 — Safety Inspection (Continued)</h1>
+      <p>Engineering, S&amp;T / Electrical &amp; General Items</p>
+    </div>
+    <div class="card-body">
+
+      <div class="section-title">6. Engineering Items</div>
+      <table class="checklist">
+        <thead>
+          <tr>
+            <th width="5%">No.</th>
+            <th>Item</th>
+            <th width="18%">Yes / No</th>
+            <th width="25%">Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>i</td><td>Check rail clearance (51–57 mm)</td><td><select name="e1"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td><td><input type="text" name="er1" /></td></tr>
+          <tr><td>ii</td><td>Check rail vertical clearance (&gt;38 mm)</td><td><select name="e2"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td><td><input type="text" name="er2" /></td></tr>
+          <tr><td>iii</td><td>Road sign board</td><td><select name="e3"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td><td><input type="text" name="er3" /></td></tr>
+          <tr><td>iv</td><td>Stop board with spare chain</td><td><select name="e4"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td><td><input type="text" name="er4" /></td></tr>
+          <tr><td>v</td><td>Height gauge available at proper location on either side with 1m marking</td><td><select name="e5"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td><td><input type="text" name="er5" /></td></tr>
+          <tr><td>vi</td><td>Speed Breakers</td><td><select name="e6"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td><td><input type="text" name="er6" /></td></tr>
+          <tr><td>vii</td><td>Condition of road surface at LC &amp; approaches</td><td><select name="e7"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td><td><input type="text" name="er7" /></td></tr>
+          <tr><td>viii</td><td>Adequate fencing to restrict unauthorized movement</td><td><select name="e8"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td><td><input type="text" name="er8" /></td></tr>
+          <tr><td>ix</td><td>Availability of water</td><td><select name="e9"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td><td><input type="text" name="er9" /></td></tr>
+        </tbody>
+      </table>
+
+      <div class="section-title">7. S &amp; T / Electrical Items</div>
+      <table class="checklist">
+        <thead>
+          <tr>
+            <th width="5%">No.</th>
+            <th>Item</th>
+            <th width="18%">Yes / No</th>
+            <th width="25%">Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>i</td><td>Clearance between Boom &amp; Road level (800 mm–1000 mm)</td><td><select name="st1"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td><td><input type="text" name="str1" /></td></tr>
+          <tr><td>ii</td><td>Working of Road Signal Flasher</td><td><select name="st2"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td><td><input type="text" name="str2" /></td></tr>
+          <tr><td>iii</td><td>Functioning of hooter</td><td><select name="st3"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td><td><input type="text" name="str3" value="Working" /></td></tr>
+          <tr><td>iv</td><td>General lighting</td><td><select name="st4"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td><td><input type="text" name="str4" /></td></tr>
+          <tr><td>v</td><td>Whether relay room at the gate is locked and keys available with S&amp;T staff and not with the gateman</td><td><select name="st5"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td><td><input type="text" name="str5" /></td></tr>
+          <tr><td>vi</td><td>Road Signal Indication</td><td><select name="st6"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td><td><input type="text" name="str6" value="Available" /></td></tr>
+          <tr><td>vii</td><td>Provision of OHE bonding to the pedestal, lock post &amp; fencing for proper earthing</td><td><select name="st7"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td><td><input type="text" name="str7" /></td></tr>
+          <tr><td>viii</td><td>Avaibility of Traction Bonding at LC Gate</td><td><select name="st8"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td><td><input type="text" name="str8" /></td></tr>
+        </tbody>
+      </table>
+
+      <div class="section-title">8. Staff Grievance System</div>
+      <table class="checklist">
+        <thead>
+          <tr>
+            <th width="5%">No.</th>
+            <th>Item</th>
+            <th width="18%">Yes / No</th>
+            <th width="25%">Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>i</td><td>Whether Grievances Register is available</td><td><select name="sg1"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td><td><input type="text" name="sgr1" /></td></tr>
+          <tr><td>ii</td><td>Whether any staff Grievance is pending</td><td><select name="sg2"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td><td><input type="text" name="sgr2" /></td></tr>
+          <tr><td>iii</td><td>Whether the employees are aware of staff Welfare initiative and recreational facilities accessible to them</td><td><select name="sg3"><option value="Yes" selected>Yes</option><option value="No">No</option></select></td><td><input type="text" name="sgr3" /></td></tr>
+        </tbody>
+      </table>
+
+      <div class="section-title">9. General Items</div>
+      <table class="checklist" style="margin-top:6px;">
+        <thead>
+          <tr>
+            <th width="5%">No.</th>
+            <th>Item</th>
+            <th width="42%">Details / Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- i. Last Inspection by Official -->
+          <tr>
+            <td style="vertical-align:top; padding-top:10px;">i</td>
+            <td style="vertical-align:top; padding-top:10px;">Last Inspection by Official</td>
+            <td>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px;">
+                <div class="form-group">
+                  <label>Date of Last Inspection</label>
+                  <input type="date" id="lastInspDt" value="2026-01-31" />
+                </div>
+                <div class="form-group">
+                  <label>Official Name</label>
+                  <input type="text" id="officerName" placeholder="Enter name…" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Designation</label>
+                <input type="text" id="designation" placeholder="Enter designation…" />
+              </div>
+            </td>
+          </tr>
+          <!-- ii. Safety Slogans/Posters -->
+          <tr>
+            <td>ii</td>
+            <td>Display of Safety Slogans / Safety Posters</td>
+            <td>
+              <input type="text" id="safetyPosters" value="Adequate" />
+            </td>
+          </tr>
+          <!-- iii. Whistling -->
+          <tr>
+            <td>iii</td>
+            <td>Whistling by Train Crew from Whistle Board to LC</td>
+            <td>
+              <select id="whistling">
+                <option value="Yes" selected>Yes</option>
+                <option value="No">No</option>
+              </select>
+            </td>
+          </tr>
+          <!-- iv. Any Other Item -->
+          <tr>
+            <td style="vertical-align:top; padding-top:10px;">iv</td>
+            <td style="vertical-align:top; padding-top:10px;">Any Other Items</td>
+            <td>
+              <textarea id="otherItems"
+                placeholder="Enter any other items here…"
+                oninput="autoResize(this)"
+                rows="3"
+                style="min-height:62px;"></textarea>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Remarks / Observations -->
+      <div class="grid-2" style="margin-top:14px;">
+        <div class="form-group col-span-2">
+          <label>Remarks / Observations</label>
+          <textarea id="generalRemarks"
+            placeholder="Enter remarks and observations here…"
+            oninput="autoResize(this)"
+            rows="3"
+            style="min-height:62px;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Date of Inspection</label>
+          <input type="date" id="inspDate" value="" />
+        </div>
+      </div>
+
+    
+    </div><!-- /card-body -->
+
+    <div class="btn-row" style="flex-wrap:nowrap; align-items:flex-end; gap:6px; padding:14px 16px;">
+      <!-- CLI block — Page 2 -->
+      <div class="cli-block">
+        <div>
+          <label>Upload CLI Signature</label>
+          <div class="cli-row" style="margin-top:4px;">
+            <button id="cliSigUploadBtn2" type="button" onclick="document.getElementById('cliSigInput').click()" style="padding:5px 10px;font-size:.78rem;display:flex;align-items:center;gap:5px;background:var(--blue-dark);color:#fff;border:none;border-radius:7px;cursor:pointer;font-weight:600;">
+              <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:#fff;flex-shrink:0;"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>
+              Attach Signature
+            </button>
+            <span id="cliSigStatus" style="font-size:.75rem;color:#2e7d32;margin-left:6px;display:none;font-weight:600;"></span>
+          </div>
+        </div>
+        <div style="margin-top:6px;">
+          <label>Name of CLI /Inspecting Officer (1)</label>
+          <select id="cliNameHQ2" style="margin-top:3px; width:100%; font-size:.82rem; padding:5px 8px;">
+            <option value="">-- Select CLI Name / HQ --</option>
+          </select>
+        </div>
+        <div style="margin-top:6px;">
+          <label>Name of CLI /Inspecting Officer (2)</label>
+          <select id="cliNameHQ3" style="margin-top:3px; width:100%; font-size:.82rem; padding:5px 8px;">
+            <option value="">-- Select CLI Name / HQ --</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="btn btn-outline" onclick="prevPage()" style="padding:7px 11px;font-size:.78rem;white-space:nowrap;">← Previous</button>
+      <button class="btn btn-outline" onclick="saveDraft()" style="padding:7px 11px;font-size:.78rem;white-space:nowrap;">
+        <svg viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+        Save Draft
+      </button>
+      <button class="btn btn-warning" onclick="uploadDraft()" style="padding:7px 11px;font-size:.78rem;white-space:nowrap;">
+        <svg viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+        Upload Draft
+      </button>
+      <button class="btn btn-pdf" onclick="generatePDF()" style="padding:7px 11px;font-size:.78rem;white-space:nowrap;">
+        <svg viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/></svg>
+        Generate PDF
+      </button>
+      <button class="btn btn-success" onclick="submitToSheet()" style="padding:7px 11px;font-size:.78rem;white-space:nowrap;">
+        <svg viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg>
+        Submit
+      </button>
+    </div>
+  </div><!-- /card -->
+</div><!-- /page2 -->
+
+</div><!-- /container -->
+
+<script>
+// ── CLI Options from Excel ────────────────────────────────────
+const CLI_OPTIONS = ["A K REDDY/CLI/BIA","A.R.TARAM/CLI/BIA","ABDUL MOIN KHAN/CLI/BIA","AKHILESH KUMAR/CLI/BIA","AMIT KUMAR BANKURE/CLI/BIA","ANANT PRAKASH SHRIVASTAVA/CLI/BIA","ANIL KUMAR/CLI/BIA","ANKIT RAM KANT/CLI/BIA","AVON KUMAR SAHU/CLI/BIA","B B KUSHWAHA/CLI/BIA","B K HARMUKH/CLI/BIA","B. K. SAHA/CLI/BIA","B.K.SONI/CLI/BIA","BHARAT SINGH ATBHAIYYA/CLI/BIA","BHOLI CHAUDHARY/CLI/BIA","BIKRAMJIT KANRAR/CLI/BIA","DEEPANNITA PUNTAMBEKAR/CLI/BIA","G. C. BISWAS/CLI/BIA","G. V. R. K. MADHU/CLI/BIA","GIRDHARI LAL/CLI/BIA","JAISHANKAR SHARMA/CLI/BIA","K P LAHARE/CLI/BIA","K. K. SAHU/CLI/BIA","KHUSAL SINGH/CLI/BIA","MAHESHWAR/CLI/BIA","MANOJ KUMAR SAO/CLI/BIA","MANSUKH LAL CHANDRAKAR/CLI/BIA","MOHIT KUMAR SWARNKAR/CLI/BIA","N. R. KARPAL/CLI/BIA","N.K. BHOI/CLI/BIA","P.K. PATEL/CLI/BIA","PANKAJ KUMAR SINGH/CLI/BIA","PAWAN KUMAR SINGH/CLI/BIA","RAJENDRA KUMAR/CLI/BIA","RAJENDRA SINGH/CLI/BIA","RAJNEESH BENERJEE/CLI/BIA","S K GAUTAM/CLI/BIA","S S HUSSAIN/CLI/BIA","S. C. RAI/CLI/BIA","S. K. SINGH/CLI/BIA","S. L. SONI/CLI/BIA","SANJAY KUMAR ROY/CLI/BIA","SANJEEV KUMAR SHARMA/CLI/BIA","SHAILENDRA SINGH/CLI/BIA","SUNDEEP KUMAR SHARMA/CLI/BIA","SUNIL KUMAR DEWANGAN/CLI/BIA","TEST ID/CLI/BIA","V.K. BHAGAT/CLI/BIA","VIJAY KUMAR ARYA/CLI/BIA","VIKAS SHENDE/CLI/BIA","VINAY KUMAR VINCHURE/CLI/BIA","VINAY PANTAWANE/CLI/BIA","Y. RAMU/CLI/BIA","OTHERS"];
+
+// Shared CLI signature data URL
+let cliSigDataURL = null;
+
+// Populate CLI dropdowns
+function populateCLI() {
+  // Only cliNameHQ2 remains (page 1 CLI block removed)
+  const sel2 = document.getElementById('cliNameHQ2');
+  const sel3 = document.getElementById('cliNameHQ3');
+  [sel2, sel3].forEach(sel => {
+    if (!sel) return;
+    CLI_OPTIONS.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      sel.appendChild(opt);
+    });
+  });
+  if (sel2) {
+    sel2.addEventListener('change', function() {
+      const h = document.getElementById('cliNameHQ');
+      if (h) h.value = this.value;
+    });
+  }
+}
+
+// CLI Signature handlers
+function handleCliSig(input) {
+  if (!input.files || !input.files[0]) return;
+  const fileName = input.files[0].name;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    cliSigDataURL = e.target.result;
+    const status = document.getElementById('cliSigStatus');
+    if (status) { status.textContent = '✔ ' + fileName; status.style.display = 'inline'; }
+    showToast('✔ CLI Signature attached!', '#0277bd');
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function clearCliSig() {
+  cliSigDataURL = null;
+  document.getElementById('cliSigInput').value = '';
+  const status = document.getElementById('cliSigStatus');
+  if (status) { status.textContent = ''; status.style.display = 'none'; }
+}
+
+// ── Page Navigation ───────────────────────────────────────────
+function nextPage() {
+  document.getElementById('page1').classList.remove('active');
+  document.getElementById('page2').classList.add('active');
+  document.getElementById('step1').classList.remove('active');
+  document.getElementById('step2').classList.add('active');
+  // CLI dropdown only on page 2
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function prevPage() {
+  document.getElementById('page2').classList.remove('active');
+  document.getElementById('page1').classList.add('active');
+  document.getElementById('step2').classList.remove('active');
+  document.getElementById('step1').classList.add('active');
+  // CLI dropdown only on page 2
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+function showToast(msg, color) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = color || '#1b5e20';
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 3000);
+}
+
+// ── Collect all form data ─────────────────────────────────────
+function collectData() {
+  const data = {};
+  document.querySelectorAll('input, textarea, select').forEach(el => {
+    const key = el.id || el.name;
+    if (key) data[key] = el.value;
+  });
+  data['cliNameHQ'] = (document.getElementById('cliNameHQ2') || {}).value || '';
+  return data;
+}
+
+// ── Save Draft → Download JSON file ──────────────────────────
+function saveDraft() {
+  const data = collectData();
+  if (cliSigDataURL) data['__cliSig'] = cliSigDataURL;
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'mlc_inspection_draft.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✔ Draft saved as JSON file!', '#0277bd');
+}
+
+// ── Upload Draft → Load JSON file to restore form ─────────────
+function uploadDraft() {
+  const input = document.createElement('input');
+  input.type  = 'file';
+  input.accept = 'application/json,.json';
+  input.onchange = function() {
+    if (!this.files || !this.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = JSON.parse(e.target.result);
+        Object.keys(data).forEach(k => {
+          if (k === '__cliSig') return;
+          const el = document.getElementById(k) || document.querySelector('[name="' + k + '"]');
+          if (el) el.value = data[k];
+        });
+        // Sync cliNameHQ2 from saved cliNameHQ
+        if (data['cliNameHQ']) {
+          const s2 = document.getElementById('cliNameHQ2');
+          if (s2) s2.value = data['cliNameHQ'];
+        }
+        if (data['__cliSig']) {
+          cliSigDataURL = data['__cliSig'];
+          const status = document.getElementById('cliSigStatus');
+          if (status) { status.textContent = '✔ Signature loaded'; status.style.display = 'inline'; }
+        }
+        // Re-trigger auto-resize for remarks textareas after loading
+        ['generalRemarks','otherItems'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) autoResize(el);
+        });
+        showToast('✔ Draft loaded successfully!', '#e65100');
+      } catch(err) {
+        showToast('⚠ Invalid draft file!', '#b71c1c');
+      }
+    };
+    reader.readAsText(this.files[0]);
+  };
+  input.click();
+}
+
+// ── Submit to Google Sheet ────────────────────────────────────
+function submitToSheet() {
+  const SHEET_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
+  const data = collectData();
+  showToast('⏳ Submitting to Google Sheet…', '#0277bd');
+  fetch(SHEET_URL, {
+    method: 'POST', mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  .then(() => showToast('✔ Submitted to Google Sheet successfully!', '#1b5e20'))
+  .catch(() => showToast('⚠ Submission failed. Check sheet URL.', '#b71c1c'));
+}
+
+// ── Generate PDF ──────────────────────────────────────────────
+function generatePDF() {
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    const margin = 14;
+    let y = 14;
+    const pageH = 297;
+    let lineH = 6.0;   // dynamic per page
+    let rowH  = 6.0;   // dynamic per page
+
+    let sectionStartY = null;
+    let sectionPage   = null;
+
+    function checkPage(needed) {
+      if (y + needed > pageH - 20) {
+        closeSectionBorder();
+        doc.addPage();
+        y = 14;
+        sectionStartY = null;
+      }
+    }
+
+    function closeSectionBorder() {
+      if (sectionStartY !== null && doc.internal.getCurrentPageInfo().pageNumber === sectionPage) {
+        doc.setDrawColor(21, 101, 192);
+        doc.setLineWidth(0.4);
+        doc.rect(margin, sectionStartY, 182, y - sectionStartY);
+        sectionStartY = null;
+      }
+    }
+
+    // Header
+    doc.setFillColor(21, 101, 192);
+    doc.rect(0, 0, 210, 24, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(12); doc.setFont(undefined, 'bold');
+    doc.text('SFT-5 — Check List for Safety Inspection of Manned Level Crossing Gate', margin, 13);
+    doc.setFontSize(9); doc.setFont(undefined, 'normal');
+    doc.text('Detailed departmental inspection as per checklist of respective department', margin, 20);
+    y = 28;
+
+    doc.setTextColor(13, 42, 78);
+
+    function sectionTitle(title) {
+      closeSectionBorder();
+      checkPage(14);
+      sectionStartY = y;
+      sectionPage   = doc.internal.getCurrentPageInfo().pageNumber;
+      doc.setFont(undefined, 'bold'); doc.setFontSize(10);
+      doc.setTextColor(21, 101, 192);
+      doc.text(title, margin + 6, y + 5.5);
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(13, 42, 78);
+      y += 8;
+    }
+
+    function field(label, value) {
+      checkPage(9);
+      doc.setFontSize(9.5);
+      doc.setFont(undefined, 'bold');   doc.text(label + ':', margin + 6, y);
+      doc.setFont(undefined, 'normal'); doc.text(String(value || '—').substring(0, 80), margin + 68, y);
+      y += lineH;
+    }
+
+    function tableRows(headers, rows) {
+      const colW = [10, 98, 26, 48];
+      checkPage(rowH * rows.length + 14);
+      doc.setFont(undefined, 'bold'); doc.setFontSize(8.5);
+      doc.setTextColor(21, 101, 192);
+      let cx = margin + 4;
+      headers.forEach((h, i) => { doc.text(h, cx + 1, y + rowH * 0.75); cx += colW[i]; });
+      y += rowH;
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(13, 42, 78);
+
+      rows.forEach((row, ri) => {
+        checkPage(rowH + 2);
+        if (ri % 2 === 0) { doc.setFillColor(227, 242, 253); doc.rect(margin, y, 182, rowH, 'F'); }
+        cx = margin + 4;
+        row.forEach((cell, i) => {
+          doc.text(String(cell || '').substring(0, 50), cx + 1, y + rowH * 0.72);
+          cx += colW[i];
+        });
+        y += rowH;
+      });
+      y += 2;
+    }
+
+    // -- Inspecting Official (header fields — no border/background, bold values)
+    checkPage(16);
+    const offCols = [
+      ['Name of Inspecting Official', document.getElementById('inspOfficialName').value],
+      ['Date of Inspection', document.getElementById('inspDateTop').value],
+      ['Designation', document.getElementById('inspDesignationTop').value]
+    ];
+    offCols.forEach(([lbl, val], idx) => {
+      const cx = margin + 4 + idx * 61;
+      doc.setFont(undefined, 'bold'); doc.setFontSize(8); doc.setTextColor(21, 101, 192);
+      doc.text(lbl, cx, y + 5);
+      doc.setFont(undefined, 'bold'); doc.setFontSize(10); doc.setTextColor(13, 42, 78);
+      doc.text(String(val || '—').substring(0, 22), cx, y + 12);
+    });
+    y += 16;
+
+    // -- Section 1
+    sectionTitle('1. Level Crossing Gate Details');
+    y += 2;
+    field('LC Gate No.', document.getElementById('gateNo').value);
+    field('TVU', document.getElementById('tvu').value);
+    field('Location', document.getElementById('location').value);
+    field('Last Date of Census', document.getElementById('censusDt').value);
+    field('Interlocked', document.getElementById('interlocked').value);
+    field('Engg./Optg.', document.getElementById('enggOptg').value);
+    field('Optg. Category', document.getElementById('optgCat').value);
+    field('Gate Protection Diagram', document.getElementById('gateProt').value);
+
+    // -- Section 2
+    sectionTitle('2. Details of Gateman');
+    y += 2;
+    field('Name', document.getElementById('gatemanName').value);
+    field('Date of Birth', document.getElementById('dob').value);
+    field('Last PME Date', document.getElementById('pmeLast').value);
+    field('Next PME Due', document.getElementById('pmeNext').value);
+    field('Refresher Attended', document.getElementById('refresherDone').value);
+    field('Refresher Due', document.getElementById('refresherDue').value);
+
+    // -- Section 3
+    sectionTitle('3. Knowledge of Gateman');
+    const items3 = ['Alertness','Conversant with safety rules','Knowledge of gate working rules'];
+    const rows3 = ['k1','k2','k3'].map((n, i) => {
+      const selEl = document.querySelector(`[name="${n}"]`);
+      const remEl = document.querySelector(`[name="kr${i+1}"]`);
+      return [['i','ii','iii'][i], items3[i], selEl ? selEl.value : '', remEl ? remEl.value : ''];
+    });
+    tableRows(['No.','Item','Yes/No','Remarks'], rows3);
+
+    // -- Section 4
+    sectionTitle('4. Availability of Safety Equipments');
+    const items4 = ['H.S. Lamp Cum Tri-Colour Torch','Hand Signal Flag Green','Hand Signal Flag Red','Banner Flag Red','Detonators','Posts for Red Banner Flag'];
+    const rows4 = Array.from({length:6},(_,i)=>{
+      const selEl = document.querySelector(`[name="s${i+1}"]`);
+      const remEl = document.querySelector(`[name="sr${i+1}"]`);
+      return [['i','ii','iii','iv','v','vi'][i], items4[i], selEl?selEl.value:'', remEl?remEl.value:''];
+    });
+    tableRows(['No.','Item','Yes/No','Remarks'], rows4);
+
+    // ── PAGE BREAK → PAGE 2 (Sections 5–8) ──────────────────────
+    closeSectionBorder();
+    doc.addPage(); y = 14;
+    lineH = 5.5; rowH = 5.8;  // compact for page 2
+
+    // -- Section 5
+    sectionTitle('5. Availability of Registers');
+    const items5 = ['Gate Working Rules (GWR)','Gate Inspection Book','Duty Roster','Gatemen Catechism Register','Public Complaint','S & T Maintenance Register','Surprise Night LC Inspection Register'];
+    const nums5 = ['i','ii','iii','iv','v','vi','vii'];
+    const rows5 = Array.from({length:7},(_,i)=>{
+      const selEl = document.querySelector(`[name="r${i+1}"]`);
+      const remEl = document.querySelector(`[name="rr${i+1}"]`);
+      return [nums5[i], items5[i], selEl?selEl.value:'', remEl?remEl.value:''];
+    });
+    tableRows(['No.','Item','Yes/No','Remarks'], rows5);
+
+    sectionTitle('6. Engineering Items');
+    const items6=['Check rail clearance (51–57 mm)','Check rail vertical clearance (>38 mm)','Road sign board','Stop board with spare chain','Height gauge availability','Speed Breakers','Condition of road surface','Adequate fencing','Availability of water'];
+    const nums6=['i','ii','iii','iv','v','vi','vii','viii','ix'];
+    const rows6=Array.from({length:9},(_,i)=>{
+      const selEl = document.querySelector(`[name="e${i+1}"]`);
+      const remEl = document.querySelector(`[name="er${i+1}"]`);
+      return [nums6[i],items6[i],selEl?selEl.value:'',remEl?remEl.value:''];
+    });
+    tableRows(['No.','Item','Yes/No','Remarks'], rows6);
+
+    sectionTitle('7. S & T / Electrical Items');
+    const items8=['Clearance Boom & Road level','Working of Road Signal Flasher','Functioning of hooter','General lighting','Relay room locked & keys with S&T','Road Signal Indication','Provision of OHE bonding (earthing)','Avaibility of Traction Bonding at LC Gate'];
+    const nums8=['i','ii','iii','iv','v','vi','vii','viii'];
+    const rows8=Array.from({length:8},(_,i)=>{
+      const selEl = document.querySelector(`[name="st${i+1}"]`);
+      const remEl = document.querySelector(`[name="str${i+1}"]`);
+      return [nums8[i],items8[i],selEl?selEl.value:'',remEl?remEl.value:''];
+    });
+    tableRows(['No.','Item','Yes/No','Remarks'], rows8);
+
+    // Section 8 – Staff Grievance System
+    sectionTitle('8. Staff Grievance System');
+    const itemsSG=['Whether Grievances Register is available','Whether any staff Grievance is pending','Whether the employees are aware of staff Welfare initiative and recreational facilities accessible to them'];
+    const rowsSG=Array.from({length:3},(_,i)=>{
+      const selEl=document.querySelector(`[name="sg${i+1}"]`);
+      const remEl=document.querySelector(`[name="sgr${i+1}"]`);
+      return [['i','ii','iii'][i],itemsSG[i],selEl?selEl.value:'',remEl?remEl.value:''];
+    });
+    tableRows(['No.','Item','Yes/No','Remarks'], rowsSG);
+
+    // ── PAGE BREAK → PAGE 3 (Section 9 + Remarks + Signatures) ──
+    closeSectionBorder();
+    doc.addPage(); y = 14;
+    lineH = 7.0; rowH = 7.0;  // normal spacing for page 3
+
+    sectionTitle('9. General Items');
+    // Increased gap before first item
+    y += 6;
+    // i. Last Inspection by Official
+    checkPage(22);
+    doc.setFontSize(9.5); doc.setFont(undefined, 'bold'); doc.setTextColor(21,101,192);
+    doc.text('i.  Last Inspection by Official', margin + 6, y); y += 6;
+    doc.setFont(undefined, 'bold'); doc.setTextColor(13,42,78);
+    doc.text('Date of Last Inspection:', margin + 10, y);
+    doc.setFont(undefined, 'normal'); doc.text(String(document.getElementById('lastInspDt').value || '—'), margin + 68, y); y += 6;
+    doc.setFont(undefined, 'bold');
+    doc.text('Official Name:', margin + 10, y);
+    doc.setFont(undefined, 'normal'); doc.text(String(document.getElementById('officerName').value || '—'), margin + 68, y); y += 6;
+    doc.setFont(undefined, 'bold');
+    doc.text('Designation:', margin + 10, y);
+    doc.setFont(undefined, 'normal'); doc.text(String(document.getElementById('designation').value || '—'), margin + 68, y); y += 8;
+
+    // ii. Safety Slogans
+    doc.setFontSize(9.5);
+    doc.setFont(undefined, 'bold'); doc.setTextColor(21,101,192);
+    doc.text('ii.  Display of Safety Slogans / Safety Posters:', margin + 6, y);
+    doc.setFont(undefined, 'normal'); doc.setTextColor(13,42,78);
+    doc.text(String(document.getElementById('safetyPosters').value || '—'), margin + 108, y); y += 7;
+
+    // iii. Whistling
+    doc.setFont(undefined, 'bold'); doc.setTextColor(21,101,192);
+    doc.text('iii.  Whistling by Train Crew from Whistle Board to LC:', margin + 6, y);
+    doc.setFont(undefined, 'normal'); doc.setTextColor(13,42,78);
+    doc.text(String(document.getElementById('whistling').value || '—'), margin + 128, y); y += 7;
+
+    // iv. Any Other Items
+    doc.setFont(undefined, 'bold'); doc.setTextColor(21,101,192);
+    doc.text('iv.  Any Other Items:', margin + 6, y); y += 6;
+    doc.setFont(undefined, 'normal'); doc.setTextColor(13,42,78);
+    const otherLines = doc.splitTextToSize(document.getElementById('otherItems').value || '—', 166);
+    otherLines.forEach(line => { checkPage(6); doc.text(line, margin + 10, y); y += 5; });
+    y += 4;
+
+    closeSectionBorder();
+    y += 6;
+
+    // ── Remarks / Observations ──────────────────────────────
+    checkPage(30);
+    doc.setFillColor(21, 101, 192);
+    doc.rect(margin, y, 182, 10, 'F');
+    doc.setTextColor(255,255,255); doc.setFont(undefined,'bold'); doc.setFontSize(10);
+    doc.text('Remarks / Observations', margin + 8, y + 7);
+    y += 10;
+    const remarksText = document.getElementById('generalRemarks').value || '';
+    const remarksLines = doc.splitTextToSize(remarksText || '(None)', 174);
+    const remarksBodyH = Math.max(remarksLines.length * 5.5, 18) + 8;
+    // No background fill - removed background color
+    doc.setDrawColor(30, 136, 229); doc.setLineWidth(0.6);
+    doc.rect(margin, y, 182, remarksBodyH);
+    doc.setFont(undefined,'normal'); doc.setFontSize(9); doc.setTextColor(13,42,78);
+    remarksLines.forEach((line, idx) => { doc.text(line, margin + 8, y + 5 + idx * 5.5 + 2); });
+    y += remarksBodyH + 6;
+
+    // Date of Inspection
+    checkPage(12);
+    // No border - completely removed
+    doc.setFont(undefined,'bold'); doc.setFontSize(10); doc.setTextColor(21,101,192);
+    doc.text('Date of Inspection:', margin + 4, y + 7);
+    doc.setFont(undefined,'normal'); doc.setTextColor(13,42,78); doc.setFontSize(11);
+    doc.text(String(document.getElementById('inspDate').value || '—'), margin + 52, y + 7);
+    y += 14;
+
+    function drawRemarksBox(secNum, titleText, bodyText, headerRGB, bgRGB, borderRGB) {
+      const boxX   = margin;
+      const boxW   = 182;
+      const padX   = 8;
+      const innerW = boxW - padX * 2;
+
+      // ── Header band ──
+      const headerH = 10;
+      checkPage(headerH + 16);
+      doc.setFillColor(...headerRGB);
+      doc.rect(boxX, y, boxW, headerH, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont(undefined, 'bold');
+      doc.setFontSize(10);
+      doc.text(`${secNum}. ${titleText}`, boxX + padX, y + 7);
+
+      y += headerH;
+
+      // ── Body: split bold text into wrapped lines ──
+      doc.setFont(undefined, 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(...[13, 42, 78]);
+
+      const bodyLines = doc.splitTextToSize(bodyText || '(None)', innerW);
+      const lineH     = 5.5;
+      const bodyH     = bodyLines.length * lineH + 10; // top+bottom pad = 5 each
+
+      checkPage(bodyH + 4);
+
+      // Fill background
+      doc.setFillColor(...bgRGB);
+      doc.rect(boxX, y, boxW, bodyH, 'F');
+
+      // Border around body
+      doc.setDrawColor(...borderRGB);
+      doc.setLineWidth(0.6);
+      doc.rect(boxX, y, boxW, bodyH);
+
+      // Draw each wrapped line in bold
+      bodyLines.forEach((line, idx) => {
+        doc.text(line, boxX + padX, y + 5 + idx * lineH + lineH * 0.4);
+      });
+
+      y += bodyH + 6;
+    }
+
+    // (Any Other Items rendered inside Section 9 above)
+
+    // Signatures section (no separate sig fields – CLI block covers this)
+    closeSectionBorder();
+    y += 4;
+
+    // CLI Signature block — signature on right, CLI Name & HQ below signature
+    checkPage(40);
+    const cliVal1 = document.getElementById('cliNameHQ2') ? document.getElementById('cliNameHQ2').value : '';
+    const cliVal2 = document.getElementById('cliNameHQ3') ? document.getElementById('cliNameHQ3').value : '';
+    const cliVal = [cliVal1, cliVal2].filter(Boolean).join('  |  ') || '—';
+
+    if (cliSigDataURL) {
+      // Signature image
+      try {
+        doc.addImage(cliSigDataURL, 'PNG', margin + 110, y, 40, 22);
+      } catch(e) { console.warn('Signature image error:', e); }
+      // "CLI Signature" label below image
+      doc.setFontSize(7); doc.setTextColor(100, 100, 100); doc.setFont(undefined, 'normal');
+      doc.text('CLI Signature', margin + 110, y + 25);
+      // CLI Name & HQ label below signature label
+      doc.setFont(undefined, 'bold'); doc.setFontSize(10); doc.setTextColor(21, 101, 192);
+      doc.text('Name of CLI /Inspecting Officer', margin + 110, y + 33);
+      // CLI Name value below label
+      doc.setFont(undefined, 'normal'); doc.setTextColor(13, 42, 78); doc.setFontSize(10);
+      const splitCli = doc.splitTextToSize(cliVal, 70);
+      doc.text(splitCli, margin + 110, y + 37);
+      y += 40 + (splitCli.length - 1) * 5;
+    } else {
+      // No signature — just show CLI Name & HQ
+      doc.setFillColor(227, 242, 253);
+      doc.rect(margin, y, 182, 14, 'F');
+      doc.setFont(undefined, 'bold'); doc.setFontSize(10); doc.setTextColor(21, 101, 192);
+      doc.text('Name of CLI /Inspecting Officer', margin + 6, y + 7);
+      doc.setFont(undefined, 'normal'); doc.setTextColor(13, 42, 78); doc.setFontSize(10);
+      doc.text(cliVal, margin + 6, y + 15);
+      y += 16;
+    }
+
+    // Footer
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= totalPages; p++) {
+      doc.setPage(p);
+      doc.setFillColor(21, 101, 192);
+      doc.rect(0, 289, 210, 8, 'F');
+      doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont(undefined, 'normal');
+      doc.text('SFT-5 | Level Crossing Safety Inspection Form | Generated on ' + new Date().toLocaleDateString(), margin, 294);
+      doc.text('Page ' + p + ' of ' + totalPages, 190, 294, { align: 'right' });
+    }
+
+    doc.save('MLC_Inspection_Report.pdf');
+    showToast('✔ PDF generated & downloaded!', '#b71c1c');
+  } catch(err) {
+    console.error('PDF Error:', err);
+    showToast('⚠ PDF Error: ' + err.message, '#b71c1c');
+  }
+}
+
+// ── Auto-resize textarea ──────────────────────────────────────
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+
+// ── Load draft if exists ──────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  populateCLI();
+
+  // Auto-resize any pre-filled remarks textareas
+  ['generalRemarks','otherItems'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.value) autoResize(el);
+  });
+
+  const saved = localStorage.getItem('mlc_draft');
+  if (saved) {
+    try {
+      const data = JSON.parse(saved);
+      Object.keys(data).forEach(k => {
+        if (k === '__cliSig') return;
+        const el = document.getElementById(k) || document.querySelector(`[name="${k}"]`);
+        if (el) el.value = data[k];
+      });
+      // Restore CLI signature
+      if (data['__cliSig']) {
+        cliSigDataURL = data['__cliSig'];
+        const status = document.getElementById('cliSigStatus');
+        if (status) { status.textContent = '✔ Signature loaded'; status.style.display = 'inline'; }
+      }
+    } catch(e) {}
+  }
+});
+</script>
+</body>
+</html>
